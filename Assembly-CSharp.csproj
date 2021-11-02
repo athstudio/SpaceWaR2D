@@ -36,9 +36,10 @@
     <ImplicitlyExpandDesignTimeFacades>false</ImplicitlyExpandDesignTimeFacades>
   </PropertyGroup>
   <ItemGroup>
-     <Compile Include="Assets\Scripts\Player.cs" />
-     <Compile Include="Assets\Scripts\WaveConfigSO.cs" />
      <Compile Include="Assets\Scripts\PathFinder.cs" />
+     <Compile Include="Assets\Scripts\WaveConfigSO.cs" />
+     <Compile Include="Assets\Scripts\Player.cs" />
+     <Compile Include="Assets\Scripts\EnemySpawner.cs" />
      <None Include="Assets\Asset Packs\license.txt" />
      <None Include="Assets\Asset Packs\Spritesheet\sheet.xml" />
     <Reference Include="UnityEngine">

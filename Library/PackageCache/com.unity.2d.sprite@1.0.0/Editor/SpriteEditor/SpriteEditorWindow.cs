@@ -55,15 +55,15 @@ namespace UnityEditor.U2D.Sprites
         }
 
         SpriteDataProviderFactory[] m_Factories;
-        TypeCache.MethodCollection m_AssetPathProvider;
-        TypeCache.MethodCollection m_SpriteObjectProvider;
+        MethodInfo[] m_AssetPathProvider;
+        MethodInfo[] m_SpriteObjectProvider;
 
         /// <summary>
         /// Initialized and collect methods with SpriteDataProviderFactoryAttribute and SpriteDataProviderAssetPathProviderAttribute.
         /// </summary>
         public void Init()
         {
-            var factories = TypeCache.GetTypesDerivedFrom(typeof(ISpriteDataProviderFactory<>));
+            var factories = EditorAssemblies.loadedTypes.Where(x => x.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ISpriteDataProviderFactory<>))).ToArray();
             var factoryList = new List<SpriteDataProviderFactory>();
             foreach (var factory in factories)
             {
@@ -90,8 +90,8 @@ namespace UnityEditor.U2D.Sprites
                 }
             }
             m_Factories = factoryList.ToArray();
-            m_AssetPathProvider = TypeCache.GetMethodsWithAttribute<SpriteEditorAssetPathProviderAttribute>();
-            m_SpriteObjectProvider = TypeCache.GetMethodsWithAttribute<SpriteObjectProviderAttribute>();
+            m_AssetPathProvider = EditorAssemblies.GetAllMethodsWithAttribute<SpriteEditorAssetPathProviderAttribute>(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic).ToArray();
+            m_SpriteObjectProvider = EditorAssemblies.GetAllMethodsWithAttribute<SpriteObjectProviderAttribute>(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic).ToArray();
         }
 
         /// <summary>
@@ -235,7 +235,6 @@ namespace UnityEditor.U2D.Sprites
         private const float k_ModuleListWidth = 90f;
         private const string k_RefreshOnNextRepaintCommandEvent = "RefreshOnNextRepaintCommand";
         bool m_ResetOnNextRepaint;
-        bool m_ResetCommandSent;
 
         private List<SpriteRect> m_RectsCache;
         ISpriteEditorDataProvider m_SpriteDataProvider;
@@ -243,7 +242,7 @@ namespace UnityEditor.U2D.Sprites
         private bool m_RequestRepaint = false;
 
         public static bool s_OneClickDragStarted = false;
-        string m_SelectedAssetPath;
+        public string m_SelectedAssetPath;
 
         private IEventSystem m_EventSystem;
         private IUndoSystem m_UndoSystem;
@@ -293,8 +292,6 @@ namespace UnityEditor.U2D.Sprites
 
         private void OnFocus()
         {
-            if (m_SelectedObject != Selection.activeObject)
-                OnSelectionChange();
             if (selectedProviderChanged)
                 RefreshSpriteEditorWindow();
         }
@@ -653,9 +650,8 @@ namespace UnityEditor.U2D.Sprites
                 ResetOnNextRepaint();
             }
 
-            if (m_ResetCommandSent || (UnityEngine.Event.current.type == EventType.ExecuteCommand && UnityEngine.Event.current.commandName == k_RefreshOnNextRepaintCommandEvent))
+            if (UnityEngine.Event.current.type == EventType.ExecuteCommand && UnityEngine.Event.current.commandName == k_RefreshOnNextRepaintCommandEvent)
             {
-                m_ResetCommandSent = false;
                 if (selectedProviderChanged || !IsSpriteDataProviderValid())
                     m_SelectedAssetPath = GetSelectionAssetPath();
                 RebuildCache();
@@ -686,7 +682,6 @@ namespace UnityEditor.U2D.Sprites
             if (m_ResetOnNextRepaint)
             {
                 m_ResetOnNextRepaint = false;
-                m_ResetCommandSent = true;
                 var e = EditorGUIUtility.CommandEvent(k_RefreshOnNextRepaintCommandEvent);
                 this.SendEvent(e);
             }
@@ -708,8 +703,6 @@ namespace UnityEditor.U2D.Sprites
                 return;
             InitStyles();
             UpdateAssetSelectionChange();
-            if (m_ResetCommandSent)
-                return;
             if (!activeDataProviderSelected)
             {
                 using (new EditorGUI.DisabledScope(true))
